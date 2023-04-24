@@ -1,24 +1,43 @@
-import requests
+import requests, csv, xlsxwriter, os
 from bs4 import BeautifulSoup
+from datetime import *
 
 search_job = input("Podaj zawód do wyszukania ofert pracy: ")
-number = 1
-exp_data = "\n1.praktykant/stażysta\n2.mid/regular\n3.senior\n".ljust(10)
+
+exp_data = "\n1.praktykant/stażysta\n1.junior\n3.mid/regular\n4.senior\n5.expert\n".ljust(10)
 print(exp_data)
 exp_level = input("Podaj stopień zaawansowania: ")
 if "1" in exp_level:
-    et = "1"
+    et = 1
+    etId = "praktykant"
+    nofluffseniority = "trainee"
 elif "2" in exp_level:
-    et = "4"
+    et = 17
+    etId="junior"
+    nofluffseniority = "junior"
 elif "3" in exp_level:
-    et = "18"
+    et = 4
+    etId = "mid"
+    nofluffseniority = "mid"
+elif "4" in exp_level:
+    et = 18
+    etId = "senior"
+    nofluffseniority = "senior"
+elif "5" in exp_level:
+    et = 19
+    etId = "expert"
+    nofluffseniority = "expert"
 localization = input("\nPodaj lokalizacje:").lower()
 range = input("Podaj promień wyszukania w kilometrach:")
 
-while number <= 10:
+
+number = 1
+excelData = []
+
+while number <= 100:
     print("Page nr:", number)
     url = (f"https://www.pracuj.pl/praca/{search_job};kw/{localization};wp?rd={range}&et={et}&pn={number}")
-    #print(url)
+    print(url)
 
 
     header = {
@@ -27,38 +46,75 @@ while number <= 10:
     response = requests.get(url, headers=header)
 
     soup = BeautifulSoup(response.content, "html.parser")  # ''lxml
-    # print(soup.prettify()
+    #print(soup.prettify())
 
-    elements = soup.find_all("div", class_="b19e46yp p1cye3we")
-    print("Znaleziono:", len(soup.find_all("div", class_="b19e46yp p1cye3we")),"ofert\n")
+    elements = soup.find_all("div", class_="core_b19e46yp core_p1cye3we")
+
+    if len(soup.find_all("div", class_="core_b19e46yp core_p1cye3we")) > 0:
+        print("Znaleziono:", len(soup.find_all("div", class_="core_b19e46yp core_p1cye3we")),"ofert\n")
+    else:
+        print("Nieznaleiono wiecej ofert!")
+        break
+
+    
 
     for element in elements:
-        #date = element.find("p", class_="b1qc7djs t1c1o3wg")
-        job = element.find("h2", class_="b1iadbg8")
-        company = element.find("h4", class_="e1ml1ys4 t1c1o3wg")
-        city = element.find("h5", class_="r1vmcu7a t1c1o3wg")
-        salary = element.find("span", class_="su9xzpe")
+         
+        job = element.find("h2", class_="core_b1iadbg8")
+        company = element.find("h4", class_="core_e1ml1ys4 core_pvudj9o size-caption core_t1c1o3wg")
+        city = element.find("h5", class_="core_r1vmcu7a core_pvudj9o size-caption core_t1c1o3wg")
+        region = city.text if city is not None else "Inna"
+
+        salary = element.find("span", class_="core_su9xzpe")
         salary_text = salary.text if salary is not None else "Brak Danych"
-        link = element.find("a", class_="o1o6obw3 bwcfwrp njg3w7p")['href']
 
-        # print(link)
-
-        # pub_date = "Data publikacji:".ljust(9)
-        job_name = "Nazwa:".ljust(9)
+        link_element = element.find("a", class_="core_o1o6obw3 core_njg3w7p")
+        if link_element is not None:
+            link = link_element['href']
+        else:
+            link = "Brak adresu strony"
+        job_name = "Tytuł:".ljust(9)
         company_name = "Firma:".ljust(9)
         salary_range = "Widełki:".ljust(9)
-        city_name = "Miasto:".ljust(9)
+        city_name = "Region:".ljust(9)
         page_link = "Link:".ljust(9)
 
-        # {pub_date}{date.text}
+    
+        print(f'{job_name}{job.text}\n{company_name}{company.text}\n{salary_range}{salary_text}\n{city_name}{region}\n{page_link}{link}\n')
+        
 
-        print(f"{job_name}{job.text}\n{company_name}{company.text}\n{salary_range}{salary_text}\n{city_name}{city.text}\n{page_link}{link}\n")
+        excelData.append({
+            'nazwa': job.text,
+            'firma': company.text,
+            'widełki': salary_text,
+            'region': region,
+            'link': link
+            })
 
     number += 1
 
+now = datetime.now()
+dt_string = now.strftime("%d_%m_%Y_%H_%M_%S")
 
+if not os.path.exists("files"):
+    os.makedirs("files")
+    
+workbook = xlsxwriter.Workbook(f'files//pracuj_pl_{localization}_{etId}_{dt_string}.xlsx')
+worksheet = workbook.add_worksheet("Praca")
 
+worksheet.write(0,0,"#")
+worksheet.write(0,1,"Nazwa")
+worksheet.write(0,2,"Firma")
+worksheet.write(0,3,"Widełki")
+worksheet.write(0,4,"Region")
+worksheet.write(0,5,"Link")
 
+for index, entry in enumerate(excelData):
+    worksheet.write(index+1,0,str(index))
+    worksheet.write(index+1,1,entry["nazwa"])
+    worksheet.write(index+1,2,entry["firma"])
+    worksheet.write(index+1,3,entry["widełki"])
+    worksheet.write(index+1,4,entry["region"])
+    worksheet.write(index+1,5,entry["link"])
 
-
-
+workbook.close()
