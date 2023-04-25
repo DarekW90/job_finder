@@ -26,7 +26,7 @@ if page_search == '2' or page_search == 'nofluffjobs.com':
 
 search_job = input("Podaj zawód do wyszukania ofert pracy: ")
 
-exp_data = "\n1.praktykant/stażysta\n1.junior\n3.mid/regular\n4.senior\n5.expert\n".ljust(10)
+exp_data = "\n1.praktykant/stażysta\n2.junior\n3.mid/regular\n4.senior\n5.expert\n".ljust(10)
 print(exp_data)
 exp_level = input("Podaj stopień zaawansowania: ")
 if "1" in exp_level:

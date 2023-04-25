@@ -6,27 +6,27 @@ from datetime import *
 print()
 print('Wybierz strone internetową do przeszukania:')
 print('TIP: można wyszukiwać po cyfrze albo po nazwie\n')
-webPages = ['pracuj.pl', 'nofluffjobs.com', '?', 'wszystkie']
+webPages = ['wszystkie','pracuj.pl', 'nofluffjobs.com' ]
 
 enumeratedPages = enumerate(webPages)
 
 for pos, value in enumeratedPages:
-    print('{}{}{}'.format(pos+1,':',value))
+    print('{}{}{}'.format(pos,':',value))
 
 page_search = input("Którą stronę mam przeszukać? : ")
 
+
+if page_search == '0' or page_search == 'wszystkie':
+    page_search = "wszystkie"
 if page_search == '1' or page_search == 'pracuj.pl':
     page_search = 'pracuj.pl'
-elif page_search == '2' or page_search == 'nofluffjobs.com':
+if page_search == '2' or page_search == 'nofluffjobs.com':
     page_search = 'nofluffjobs.com'
-elif page_search == '3' or page_search == 'wszystkie':
-    page_search = "."
-else:
-    pass
+
 
 search_job = input("Podaj zawód do wyszukania ofert pracy: ")
 
-exp_data = "\n1.praktykant/stażysta\n1.junior\n3.mid/regular\n4.senior\n5.expert\n".ljust(10)
+exp_data = "\n1.praktykant/stażysta\n2.junior\n3.mid/regular\n4.senior\n5.expert\n".ljust(10)
 print(exp_data)
 exp_level = input("Podaj stopień zaawansowania: ")
 if "1" in exp_level:
@@ -56,8 +56,129 @@ range = input("Podaj promień wyszukania w kilometrach:")
 
 excelData = []
 
+if page_search == 'wszystkie':
+    print()
+    print('Przeglądam strone: pracuj.pl')
+    print("*"*30)
 
-if page_search == 'pracuj.pl':
+    number = 1
+    while number <= 100:
+        print("Page nr:", number)
+        url = (f"https://www.pracuj.pl/praca/{search_job};kw/{localization};wp?rd={range}&et={et}&pn={number}")
+        print(url)
+
+
+        header = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+        }
+        response = requests.get(url, headers=header)
+
+        soup = BeautifulSoup(response.content, "html.parser")  # ''lxml
+        #print(soup.prettify())
+
+        elements = soup.find_all("div", class_="core_b19e46yp core_p1cye3we")
+
+        if len(soup.find_all("div", class_="core_b19e46yp core_p1cye3we")) > 0:
+            print("Znaleziono:", len(soup.find_all("div", class_="core_b19e46yp core_p1cye3we")),"ofert\n")
+        else:
+            print("Nieznaleiono wiecej ofert!")
+            break
+
+        
+
+        for element in elements:
+            
+            job = element.find("h2", class_="core_b1iadbg8")
+            company = element.find("h4", class_="core_e1ml1ys4 core_pvudj9o size-caption core_t1c1o3wg")
+            city = element.find("h5", class_="core_r1vmcu7a core_pvudj9o size-caption core_t1c1o3wg")
+            region = city.text if city is not None else "Inna"
+
+            salary = element.find("span", class_="core_su9xzpe")
+            salary_text = salary.text if salary is not None else "Brak Danych"
+
+            link_element = element.find("a", class_="core_o1o6obw3 core_njg3w7p")
+            if link_element is not None:
+                link = link_element['href']
+            else:
+                link = "Brak adresu strony"
+            job_name = "Tytuł:".ljust(9)
+            company_name = "Firma:".ljust(9)
+            salary_range = "Widełki:".ljust(9)
+            city_name = "Region:".ljust(9)
+            page_link = "Link:".ljust(9)
+
+        
+            print(f'{job_name}{job.text}\n{company_name}{company.text}\n{salary_range}{salary_text}\n{city_name}{region}\n{page_link}{link}\n')
+            
+
+            excelData.append({
+                'nazwa': job.text,
+                'firma': company.text,
+                'widełki': salary_text,
+                'region': region,
+                'link': link
+                })
+
+        number += 1
+
+    number = 1
+    while number <= 100:
+        print("Page nr:", number)
+        url = (
+            f"https://nofluffjobs.com/pl/{localization}?page={number}&criteria=seniority%3D{nofluffseniority}")
+        print(url)
+
+        header = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+        }
+        response = requests.get(url, headers=header)
+
+        soup = BeautifulSoup(response.content, "html.parser")  # ''lxml
+        # print(soup.prettify())
+
+        elements = soup.find_all("a", class_="posting-list-item")
+
+
+        if len(soup.find_all("a", class_="posting-list-item")) > 0:
+            print("Znaleziono:", len(soup.find_all(
+                "a", class_="posting-list-item")), "ofert\n")
+        else:
+            print("Nieznaleiono wiecej ofert!")
+            break
+
+        for element in elements:
+
+            job = element.find("h3", class_="posting-title__position")
+            company = element.find("span", class_="d-block")
+            city = element.find("span", class_="tw-text-ellipsis")
+            region = city.text if city is not None else " "
+            salary = element.find(
+                "span", class_="text-truncate badgy salary tw-btn tw-btn-secondary-outline tw-btn-xs ng-star-inserted")
+            salary_text = salary.text if salary is not None else "Brak Danych"
+
+            shortLink = element['href']
+            link = ("https://nofluffjobs.com"+shortLink)
+            # print(link)
+
+            job_name = "Tytuł:".ljust(9)
+            company_name = "Firma:".ljust(9)
+            salary_range = "Widełki:".ljust(9)
+            city_name = "Region:".ljust(9)
+            page_link = "Link:".ljust(9)
+
+            excelData.append({
+                'nazwa': job.text,
+                'firma': company.text,
+                'widełki': salary_text,
+                'region': region,
+                'link': link
+            })
+
+            print(f'{job_name}{job.text}\n{company_name}{company.text}\n{city_name}{region}\n{salary_range}{salary_text}\n{page_link}{link}\n')
+
+        number += 1
+
+elif page_search == 'pracuj.pl':
     print()
     print('Przeglądam strone: pracuj.pl')
     print("*"*30)
